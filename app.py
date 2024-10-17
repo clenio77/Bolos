@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, text
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, joinedload
