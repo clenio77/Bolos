@@ -18,6 +18,8 @@
     }
   },
   "updateContentCommand": "
+    echo 'Atualizando pip, setuptools e wheel...';
+    pip3 install --upgrade pip setuptools wheel;
     echo 'Iniciando instalação de pacotes...';
     [ -f packages.txt ] && sudo apt update && sudo apt upgrade -y && sudo xargs apt install -y <packages.txt;
     echo 'Instalando requisitos do Python...';
