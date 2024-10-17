@@ -4,6 +4,8 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, joinedload
 
+
+
 # Configuração do banco de dados
 engine = create_engine('sqlite:///bolos.db', echo=True)
 Base = declarative_base()
