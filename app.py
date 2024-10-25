@@ -136,13 +136,20 @@ def calcular_custo_receita(receita_id):
         custo_mao_de_obra = custo_ingredientes
         custo_total = custo_ingredientes + custo_mao_de_obra
         
-        # Calcula o preço final considerando a margem de lucro
-        preco_final = custo_total / (1 - receita.margem_lucro / 100)
+        preco_final = calcular_preco_final(custo_total, receita.margem_lucro)
         
         session.commit()
         return custo_total, ingredientes_detalhes, len(ingredientes_invalidos), custo_mao_de_obra, preco_final
     finally:
         session.close()
+
+def calcular_preco_final(custo_total, margem_lucro):
+    if margem_lucro < 0:
+        return custo_total  # Preço igual ao custo se a margem for negativa
+    elif margem_lucro == 100:
+        return float('inf')  # Retorna infinito se a margem for exatamente 100%
+    else:
+        return custo_total / (1 - margem_lucro / 100)
 
 # Adicione esta nova função para excluir ingrediente
 def excluir_ingrediente(ingrediente_id):
@@ -197,7 +204,7 @@ def editar_receita(receita_id, novo_nome, nova_descricao, nova_margem_lucro, nov
         session.commit()
     session.close()
 
-# Configuração do tema e estilo
+# Configuraço do tema e estilo
 st.set_page_config(page_title="Sistema de Controle de Custo de Receitas de Bolos", page_icon="🍰", layout="wide")
 
 # CSS personalizado para responsividade
@@ -331,7 +338,7 @@ def adicionar_receita_ui():
     with st.form("adicionar_receita_form", clear_on_submit=True):
         nome_receita = st.text_input('Nome da Receita')
         descricao_receita = st.text_area('Descrição da Receita')
-        margem_lucro = st.number_input('Margem de Lucro (%)', min_value=0.0, max_value=100.0, step=0.1, value=0.0)
+        margem_lucro = st.number_input('Margem de Lucro (%)', min_value=0.0, step=0.1, value=0.0)
         
         st.subheader("Ingredientes")
         ingredientes_selecionados = []
@@ -378,10 +385,17 @@ def listar_receitas_ui():
                     st.write(f'**Custo da mão de obra:** R$ {custo_mao_de_obra:.2f}')
                     st.write(f'**Custo total da receita:** R$ {custo_total:.2f}')
                     st.write(f'**Margem de lucro:** {receita.margem_lucro:.2f}%')
-                    st.write(f'**Preço final sugerido:** R$ {preco_final:.2f}')
                     
-                    if ingredientes_removidos > 0:
-                        st.warning(f'{ingredientes_removidos} ingrediente(s) desta receita foram removidos porque não existem mais.')
+                    if receita.margem_lucro < 100:
+                        st.write(f'**Preço final sugerido:** R$ {preco_final:.2f}')
+                    elif receita.margem_lucro == 100:
+                        st.warning("A margem de lucro é 100%. O preço final seria teoricamente infinito.")
+                    else:
+                        st.warning(f"A margem de lucro é {receita.margem_lucro:.2f}%. O preço final seria negativo, o que não é economicamente viável.")
+                    
+                    if receita.margem_lucro >= 100:
+                        markup = receita.margem_lucro / 100 + 1
+                        st.info(f"Para esta margem de lucro, o preço de venda deveria ser {markup:.2f} vezes o custo total.")
                     
                     col1, col2 = st.columns(2)
                     with col1:
@@ -449,10 +463,25 @@ def atualizar_banco_dados_ui():
     
     if st.button("Atualizar Banco de Dados"):
         try:
-            adicionar_coluna_margem_lucro()
+            atualizar_banco_de_dados()
             st.success("Banco de dados atualizado com sucesso!")
         except Exception as e:
             st.error(f"Erro ao atualizar o banco de dados: {str(e)}")
 
+def atualizar_banco_de_dados():
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE receitas ADD COLUMN descricao STRING(500)"))
+            conn.commit()
+            print("Coluna 'descricao' adicionada com sucesso!")
+        except Exception as e:
+            print(f"Erro ao adicionar coluna 'descricao': {str(e)}")
+            # Se a coluna já existir, não é um erro crítico
+            if "duplicate column name" not in str(e).lower():
+                raise
+
+    adicionar_coluna_margem_lucro()
+
 if __name__ == "__main__":
     main()
+
